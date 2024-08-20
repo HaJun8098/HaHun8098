@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ToDo List</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        .container { max-width: 1200px; margin-top: 20px; }
+        .todo-form { width: 30%; float: left; }
+        .todo-list { width: 65%; float: right; display: flex; flex-wrap: wrap; gap: 10px; }
+        .todo-item { border: 1px solid #ccc; padding: 10px; width: 48%; box-sizing: border-box; }
+        .todo-item h4 { font-size: 18px; margin-bottom: 5px; }
+        .todo-item p { margin: 0; font-size: 14px; }
+        .todo-item button { margin-right: 5px; font-size: 12px; padding: 5px 10px; }
+        .sort-buttons { 
+            position: fixed; 
+            top: 20px; 
+            right: 10%; /* 오른쪽 여백을 줄여서 버튼을 리스트와 더 가까이 위치시킴 */
+            display: flex; 
+           
+            gap: 5px; /* 버튼 간의 간격을 줄임 */
+            z-index: 1000; 
+        }
+        .sort-buttons button { 
+            font-size: 12px; 
+            padding: 5px 10px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="todo-form">
+            <h2>ToDoList</h2>
+            <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" id="title" class="form-control">
+            </div>
+            <div class="mb-3">
+                <label for="memo" class="form-label">Memo</label>
+                <textarea id="memo" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" id="date" class="form-control">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Priority</label>
+                <div class="btn-group" role="group" aria-label="Priority">
+                    <button type="button" class="btn btn-outline-danger priority-btn" data-priority="high">중요함</button>
+                    <button type="button" class="btn btn-outline-warning priority-btn" data-priority="medium">그냥그럼</button>
+                    <button type="button" class="btn btn-outline-secondary priority-btn" data-priority="low">중요하지 않음</button>
+                </div>
+            </div>
+            <button id="addButton" class="btn btn-primary">Add</button>
+            <button id="editButton" class="btn btn-warning" style="display:none;">Save</button>
+        </div>
+
+        <div class="todo-list" id="todoItems"></div>
+    </div>
+
+
+    <div class="sort-buttons">
+        <button id="sortByDate" class="btn btn-secondary">만료순</button>
+        <button id="sortByRecent" class="btn btn-secondary">최신순</button>
+        <button id="sortByPriority" class="btn btn-secondary">중요도순</button>
+    </div>
+
+    <script>
+        let selectedPriority = '';
+        let editingItem = null;
+
+        document.querySelectorAll('.priority-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('.priority-btn').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                selectedPriority = this.getAttribute('data-priority');
+            });
+        });
+
+        document.getElementById('addButton').addEventListener('click', function() {
+            const title = document.getElementById('title').value;
+            const memo = document.getElementById('memo').value;
+            const date = document.getElementById('date').value;
+
+            let priorityText = '';
+            if (selectedPriority === 'high') {
+                priorityText = '높음';
+            } else if (selectedPriority === 'medium') {
+                priorityText = '보통';
+            } else if (selectedPriority === 'low') {
+                priorityText = '낮음';
+            }
+
+            if (title && memo && date && selectedPriority) {
+                const todoItem = document.createElement('div');
+                todoItem.classList.add('todo-item');
+                
+                // ToDo 항목에 데이터 속성 추가
+                todoItem.dataset.date = date;
+                todoItem.dataset.priority = selectedPriority;
+                todoItem.dataset.timestamp = new Date().getTime();
+                
+                todoItem.innerHTML = `
+                    <h4 class="title">${title}</h4>
+                    <p class="memo">${memo}</p>
+                    <p class="date">마감일: ${date}</p>
+                    <p class="priority">중요도: ${priorityText}</p>
+                    <button class="btn btn-warning btn-sm edit-btn">수정</button>
+                    <button class="btn btn-danger btn-sm delete-btn">삭제</button>
+                `;
+
+                document.getElementById('todoItems').appendChild(todoItem);
+
+                todoItem.querySelector('.edit-btn').addEventListener('click', function() {
+                    startEditing(todoItem);
+                });
+
+                todoItem.querySelector('.delete-btn').addEventListener('click', function() {
+                    todoItem.remove();
+                });
+
+                document.getElementById('title').value = '';
+                document.getElementById('memo').value = '';
+                document.getElementById('date').value = '';
+                selectedPriority = '';
+                document.querySelectorAll('.priority-btn').forEach(btn => btn.classList.remove('active'));
+            } else {
+                alert('모든 필드를 입력해주세요.');
+            }
+        });
+
+        function startEditing(item) {
+            editingItem = item;
+
+            document.getElementById('title').value = item.querySelector('.title').textContent;
+            document.getElementById('memo').value = item.querySelector('.memo').textContent;
+            document.getElementById('date').value = item.dataset.date;
+
+            document.querySelectorAll('.priority-btn').forEach(btn => {
+                if (btn.getAttribute('data-priority') === item.dataset.priority) {
+                    btn.classList.add('active');
+                    selectedPriority = item.dataset.priority;
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            document.getElementById('addButton').style.display = 'none';
+            document.getElementById('editButton').style.display = 'inline-block';
+        }
+
+        document.getElementById('editButton').addEventListener('click', function() {
+            if (editingItem) {
+                const title = document.getElementById('title').value;
+                const memo = document.getElementById('memo').value;
+                const date = document.getElementById('date').value;
+
+                let priorityText = '';
+                if (selectedPriority === 'high') {
+                    priorityText = '높음';
+                } else if (selectedPriority === 'medium') {
+                    priorityText = '보통';
+                } else if (selectedPriority === 'low') {
+                    priorityText = '낮음';
+                }
+
+                if (title && memo && date && selectedPriority) {
+                    editingItem.querySelector('.title').textContent = title;
+                    editingItem.querySelector('.memo').textContent = memo;
+                    editingItem.querySelector('.date').textContent = `마감일: ${date}`;
+                    editingItem.querySelector('.priority').textContent = `중요도: ${priorityText}`;
+                    
+                    editingItem.dataset.date = date;
+                    editingItem.dataset.priority = selectedPriority;
+
+                    document.getElementById('title').value = '';
+                    document.getElementById('memo').value = '';
+                    document.getElementById('date').value = '';
+                    selectedPriority = '';
+                    document.querySelectorAll('.priority-btn').forEach(btn => btn.classList.remove('active'));
+
+                    document.getElementById('addButton').style.display = 'inline-block';
+                    document.getElementById('editButton').style.display = 'none';
+                    editingItem = null;
+                } else {
+                    alert('모든 필드를 입력해주세요.');
+                }
+            }
+        });
+
+        function sortTodos(sortBy) {
+            const todoItems = Array.from(document.querySelectorAll('.todo-item'));
+            todoItems.sort((a, b) => {
+                if (sortBy === 'date') {
+                    return new Date(a.dataset.date) - new Date(b.dataset.date);
+                } else if (sortBy === 'recent') {
+                    return b.dataset.timestamp - a.dataset.timestamp;
+                } else if (sortBy === 'priority') {
+                    const priorityOrder = { 'high': 1, 'medium': 2, 'low': 3 };
+                    return priorityOrder[a.dataset.priority] - priorityOrder[b.dataset.priority];
+                }
+                return 0;
+            });
+
+            const todoList = document.getElementById('todoItems');
+            todoList.innerHTML = '';
+            todoItems.forEach(item => todoList.appendChild(item));
+        }
+
+        document.getElementById('sortByDate').addEventListener('click', () => sortTodos('date'));
+        document.getElementById('sortByRecent').addEventListener('click', () => sortTodos('recent'));
+        document.getElementById('sortByPriority').addEventListener('click', () => sortTodos('priority'));
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
